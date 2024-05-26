@@ -1,0 +1,78 @@
+type User {
+    uuid: String!
+    email: String!
+    first_name: String!
+}
+
+type AuthToken {
+    access_token: String!
+    refresh_token: String!
+}
+
+type AuthResponse {
+    auth_token: AuthToken!
+    user: User!
+}
+
+input RegisterInput {
+    email: String!
+    first_name: String!
+    password: String!
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+input RefreshInput {
+    refresh: String!
+}
+
+type Comment {
+    id: ID!
+    post_id: Int!
+    parent_id: Int,
+    author_uuid: String!
+    content: String!
+    created_at: String!
+    updated_at: String
+}
+
+input NewComment {
+    content: String!
+}
+
+type Post {
+    id: ID!
+    title: String!
+    content: String!
+    comments_enabled: Boolean!
+    author_uuid: String!
+    created_at: String!
+    updated_at: String
+    comments: [Comment]!
+}
+
+input NewPost {
+    title: String!
+    content: String!
+}
+
+input GetCommentsInput {
+    post_id: ID!
+}
+
+type Query {
+    posts: [Post]!
+    comments(input: GetCommentsInput!): [Comment]!
+    user(id: ID!): User!
+}
+
+type Mutation {
+    register(input: RegisterInput!): AuthResponse!
+    login(input: LoginInput!): AuthResponse!
+    refresh(input: RefreshInput!): AuthResponse!
+    createPost(input: NewPost!): Post!
+    createComment(input: NewComment): Comment!
+}

@@ -1,0 +1,11 @@
+Postgres:
+  SslMode: "disable"
+  PgDriver: "pgx"
+
+jaeger:
+  log_span: true
+
+HTTPServer:
+  read_timeout: "5s"
+  write_timeout: "10s"
+  shutdown_timeout: "10s"
