@@ -24,6 +24,8 @@
 
 IN_MEMORY_MODE = bool - env переменная отвечающая за способ хранения данных(Redis/PostgresQL)
 
+http://localhost:19090/ - GraphQL Playground
+
 ### Технологии:
  - UberFx для построения Dependency injection
  - Uber.Zap - логгер
