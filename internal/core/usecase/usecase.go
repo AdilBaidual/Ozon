@@ -10,6 +10,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const MaxContentLen = 2000
+
 type SubscriptionManager struct {
 	clients map[*Client]map[int]struct{}
 	mu      *sync.Mutex
@@ -42,6 +44,13 @@ func (u *UC) CreatePostUC(ctx context.Context, params model.NewPost, authorUUID 
 		logger = u.lg
 	}
 	var post model.Post
+
+	if len(params.Content) > MaxContentLen {
+		err := errors.New("line length is too long")
+		logger.Error("validating params", zap.Error(err))
+		return post, err
+	}
+
 	postId, err := u.repo.CreatePost(ctx, params, authorUUID)
 	if err != nil {
 		logger.Error("creating post", zap.Error(err))
@@ -63,6 +72,13 @@ func (u *UC) CreateCommentUC(ctx context.Context, params model.NewComment, autho
 		logger = u.lg
 	}
 	var comment model.Comment
+
+	if len(params.Content) > MaxContentLen {
+		err := errors.New("line length is too long")
+		logger.Error("validating params", zap.Error(err))
+		return comment, err
+	}
+
 	post, err := u.repo.GetPostById(ctx, params.PostID)
 	if err != nil {
 		logger.Error("getting post", zap.Error(err))
