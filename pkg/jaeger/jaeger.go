@@ -1,15 +1,17 @@
+//nolint: all // deprecated
 package jaeger
 
 import (
 	"Service/config"
+	"net"
+	"strconv"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
-	"net"
-	"strconv"
 )
 
 func InitJaeger(cfg config.Jaeger) (*sdktrace.TracerProvider, error) {

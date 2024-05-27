@@ -6,17 +6,23 @@ import (
 	"Service/internal/auth"
 	authRepo "Service/internal/auth/repository"
 	authUC "Service/internal/auth/usecase"
+	"Service/internal/core"
 	"Service/internal/core/delivery"
-	graph2 "Service/internal/graph"
+	graph2 "Service/internal/core/delivery/graph"
+	coreRepoPostgres "Service/internal/core/repository/postgres"
+	coreRepoRedis "Service/internal/core/repository/redis"
+	coreUC "Service/internal/core/usecase"
 	"Service/internal/middleware"
 	"Service/pkg/httpserver"
 	"Service/pkg/jaeger"
 	"Service/pkg/paseto"
 	postgresStorage "Service/pkg/storage/postgres"
+	redisStorage "Service/pkg/storage/redis"
 	valkeyStorage "Service/pkg/storage/valkey"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/fx"
@@ -34,6 +40,7 @@ func NewApp() fx.Option {
 		JaegerModule(),
 		StorageModule(),
 		PostgresModule(),
+		RedisModule(),
 		RepositoryModule(),
 		UseCaseModule(),
 		GraphqlModule(),
@@ -139,7 +146,20 @@ func PostgresModule() fx.Option {
 	)
 }
 
-// TODO: ADD SWITCH LOGIC
+func RedisModule() fx.Option {
+	return fx.Module("redis",
+		fx.Provide(
+			func(cfg *config.Config) (*redis.Client, error) {
+				return redisStorage.NewRedisClient(&redis.Options{
+					Addr:     net.JoinHostPort(cfg.Redis.Host, strconv.Itoa(cfg.Redis.Port)),
+					Password: "",
+					DB:       0,
+				})
+			},
+		),
+	)
+}
+
 func RepositoryModule() fx.Option {
 	return fx.Module("repository",
 		fx.Provide(
@@ -147,6 +167,12 @@ func RepositoryModule() fx.Option {
 				authRepo.NewRepository,
 				fx.As(new(auth.Repo)),
 			),
+			func(db *sqlx.DB, client *redis.Client) core.Repo {
+				if config.InMemory {
+					return coreRepoRedis.NewRepository(client)
+				}
+				return coreRepoPostgres.NewRepository(db)
+			},
 		),
 	)
 }
@@ -161,6 +187,10 @@ func UseCaseModule() fx.Option {
 				authUC.NewUseCase,
 				fx.As(new(auth.UseCase)),
 			),
+			coreUC.NewUseCase,
+			func(uc *coreUC.UC) core.UseCase {
+				return uc
+			},
 		),
 	)
 }
@@ -183,14 +213,6 @@ func GraphqlModule() fx.Option {
 			httpserver.NewServer,
 		),
 		fx.Invoke(
-			//func(router *gin.Engine, logger *zap.Logger, cfg config.Server, resolver *graph2.Resolver) {
-			//	srv := handler.NewDefaultServer(graph2.NewExecutableSchema(graph2.Config{Resolvers: resolver}))
-			//	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-			//	http.Handle("/query", srv)
-			//
-			//	logger.Info(fmt.Sprintf("starting GraphQL server {%s}", net.JoinHostPort(cfg.Host, cfg.Port)))
-			//	logger.Fatal("starting GraphQL server", zap.Error(http.ListenAndServe(net.JoinHostPort(cfg.Host, cfg.Port), nil)))
-			//},
 			func(lc fx.Lifecycle, srv *httpserver.Server, cfg httpserver.Config, logger *zap.Logger, shutdowner fx.Shutdowner) {
 				lc.Append(fx.Hook{
 					OnStart: func(ctx context.Context) error {
@@ -219,52 +241,6 @@ func GraphqlModule() fx.Option {
 	)
 }
 
-//func HTTPModule() fx.Option {
-//	return fx.Module("http server",
-//		fx.Provide(
-//			func(cfg *config.Config) httpserver.Config {
-//				return cfg.HTTPServer
-//			},
-//			middleware.NewMiddleware,
-//			httphandler.NewHandler,
-//			fx.Annotate(
-//				func(h *httphandler.Handler) *gin.Engine {
-//					return h.InitRoutes()
-//				},
-//				fx.As(new(http.Handler)),
-//			),
-//			httpserver.NewServer,
-//		),
-//		fx.Invoke(
-//			func(lc fx.Lifecycle, srv *httpserver.Server, cfg httpserver.Config, logger *zap.Logger, shutdowner fx.Shutdowner) {
-//				lc.Append(fx.Hook{
-//					OnStart: func(ctx context.Context) error {
-//						go func() {
-//							logger.Info(fmt.Sprintf("starting HTTP server {%s}", net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))))
-//							if err := srv.Start(); err != nil {
-//								logger.Error("error starting HTTP server",
-//									zap.Error(err),
-//									zap.String("address", net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))),
-//								)
-//							}
-//						}()
-//						return nil
-//					},
-//					OnStop: func(ctx context.Context) error {
-//						if err := srv.Stop(ctx); err != nil {
-//							logger.Error("error stopping HTTP server",
-//								zap.Error(err),
-//								zap.String("address", net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))),
-//							)
-//						}
-//						return nil
-//					},
-//				})
-//			},
-//		),
-//	)
-//}
-
 func CheckInitializedModules() fx.Option {
 	return fx.Module("check modules",
 		fx.Invoke(
@@ -272,8 +248,9 @@ func CheckInitializedModules() fx.Option {
 			func(lg *zap.Logger) {},
 			func(storage *valkeyStorage.Storage) {},
 			func(db *sqlx.DB) {},
-			//func(authR core.Repo) {},
-			//func(authUC core.UseCase) {},
+			func(redisClient *redis.Client) {},
+			func(authR auth.Repo, coreR core.Repo) {},
+			func(authUC auth.UseCase, coreUC core.UseCase) {},
 		),
 	)
 }

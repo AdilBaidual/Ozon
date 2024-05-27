@@ -3,15 +3,17 @@ package config
 import (
 	"Service/pkg/httpserver"
 	"fmt"
-
 	"github.com/ilyakaznacheev/cleanenv"
 )
+
+var InMemory bool = false
 
 const configPath string = "./config/config.yaml"
 const ServiceName string = "ozon"
 
 type Config struct {
 	Valkey   Valkey
+	Redis    Redis
 	Postgres Postgres `yaml:"Postgres"`
 	Paseto   Paseto
 	Jaeger   Jaeger            `yaml:"jaeger"`
@@ -32,6 +34,11 @@ type Postgres struct {
 	DBName   string `env:"POSTGRES_DB" env-required:"true"`
 	SSLMode  string `yaml:"SslMode"`
 	PgDriver string `yaml:"PgDriver"`
+}
+
+type Redis struct {
+	Host string `env:"REDIS_HOST" env-required:"true"`
+	Port int    `env:"REDIS_PORT" env-required:"true"`
 }
 
 type Paseto struct {

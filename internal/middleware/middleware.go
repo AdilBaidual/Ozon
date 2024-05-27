@@ -2,38 +2,42 @@ package middleware
 
 import (
 	"Service/internal/auth"
+	"Service/internal/core"
 	"Service/pkg/paseto"
 	valkeyStorage "Service/pkg/storage/valkey"
 	"context"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
-	"time"
 )
 
 type Middleware struct {
 	logger       *zap.Logger
 	authUC       auth.UseCase
+	coreUC       core.UseCase
 	paseto       *paseto.Paseto
 	tokenStorage *valkeyStorage.Storage
 }
 
-func NewMiddleware(logger *zap.Logger, authUC auth.UseCase, paseto *paseto.Paseto, tokenStorage *valkeyStorage.Storage) *Middleware {
+func NewMiddleware(logger *zap.Logger, authUC auth.UseCase, coreUC core.UseCase,
+	paseto *paseto.Paseto, tokenStorage *valkeyStorage.Storage) *Middleware {
 	return &Middleware{
 		logger:       logger,
 		authUC:       authUC,
+		coreUC:       coreUC,
 		paseto:       paseto,
 		tokenStorage: tokenStorage,
 	}
 }
 
-func (mw *Middleware) LoggingMiddleware() gin.HandlerFunc {
+func (m *Middleware) LoggingMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-
 		start := time.Now()
 
 		spanContext := trace.SpanContextFromContext(ctx.Request.Context())
-		requestLogger := mw.logger.With(zap.String("request_id", spanContext.TraceID().String()))
+		requestLogger := m.logger.With(zap.String("request_id", spanContext.TraceID().String()))
 		ctx.Set("logger", requestLogger)
 
 		ctx.Next()
@@ -48,6 +52,8 @@ func (mw *Middleware) LoggingMiddleware() gin.HandlerFunc {
 		requestLogger.Info("Request info", logInfos...)
 	}
 }
+
+const UUID = "uuid"
 
 func (m *Middleware) ValidatePasetoToken() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -76,7 +82,7 @@ func (m *Middleware) ValidatePasetoToken() gin.HandlerFunc {
 			return
 		}
 
-		c := context.WithValue(ctx.Request.Context(), "uuid", uuid)
+		c := context.WithValue(ctx.Request.Context(), UUID, uuid)
 		ctx.Request = ctx.Request.WithContext(c)
 		ctx.Next()
 	}

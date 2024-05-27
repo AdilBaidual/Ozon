@@ -50,15 +50,30 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    container_name: ozon_redis
+    image: redis
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+    ports:
+      - 6379:6379
+    networks:
+      - ozon_network
+    volumes:
+      - redis_data:/data
+
   goose:
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     build:
-        context: db/migrations
-        dockerfile: Dockerfile
+      context: db/migrations
+      dockerfile: Dockerfile
     command: sh -c "goose -dir=/app postgres postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable up"
     volumes:
-        - ./db:/app
+      - ./db:/app
     env_file:
       - .env
     networks:
@@ -76,6 +91,7 @@ services:
 volumes:
   postgres_data:
   valkey_data:
+  redis_data:
 
 networks:
   ozon_network:

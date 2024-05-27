@@ -1,0 +1,108 @@
+type User {
+    uuid: String!
+    email: String!
+    firstName: String!
+}
+
+type AuthToken {
+    accessToken: String!
+    refreshToken: String!
+}
+
+type AuthResponse {
+    authToken: AuthToken!
+    user: User!
+}
+
+input RegisterInput {
+    email: String!
+    firstName: String!
+    password: String!
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+input RefreshInput {
+    refresh: String!
+}
+
+type Comment {
+    id: ID!
+    postId: Int!
+    parentId: Int,
+    authorUuid: String!
+    content: String!
+    createdAt: String!
+}
+
+input NewComment {
+    postId: ID!
+    parentId: ID
+    content: String!
+}
+
+type CommentsConnection {
+    edges: [CommentsEdge!]!
+    pageInfo: PageInfo!
+}
+
+type CommentsEdge {
+    cursor: String!
+    hasSubComments: Boolean!
+    node: Comment
+}
+
+type PageInfo {
+    startCursor: String!
+    endCursor: String!
+    hasNextPage: Boolean
+}
+
+type Post {
+    id: ID!
+    title: String!
+    content: String!
+    commentsEnabled: Boolean!
+    authorUuid: String!
+    createdAt: String!
+}
+
+type Content {
+    id: ID!
+    title: String
+    content: String
+    commentsEnabled: Boolean
+    authorUuid: String
+    createdAt: String
+    comments(first: Int = 10, cursor: String, deep: Boolean = false): CommentsConnection
+}
+
+input NewPost {
+    title: String!
+    content: String!
+    commentsEnabled: Boolean!
+}
+
+input GetCommentsInput {
+    postId: ID!
+}
+
+type Query {
+    posts: [Post!]!
+    content(postId: ID!): Content!
+}
+
+type Mutation {
+    register(input: RegisterInput!): AuthResponse!
+    login(input: LoginInput!): AuthResponse!
+    refresh(input: RefreshInput!): AuthResponse!
+    createPost(input: NewPost!): Post!
+    createComment(input: NewComment!): Comment!
+}
+
+type Subscription {
+    notification(postID: ID!): Comment!
+}

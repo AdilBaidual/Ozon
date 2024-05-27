@@ -2,29 +2,30 @@ package delivery
 
 import (
 	"Service/config"
-	"Service/internal/graph"
+	"Service/internal/core"
+	"Service/internal/core/delivery/graph"
 	"Service/internal/middleware"
-	"fmt"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
+
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/otel"
-	"go.uber.org/zap"
-	"net/http"
 )
 
 type Handler struct {
 	engine   *gin.Engine
 	mw       *middleware.Middleware
 	resolver *graph.Resolver
+	coreUC   core.UseCase
 }
 
-func NewHandler(mw *middleware.Middleware, resolver *graph.Resolver) *Handler {
+func NewHandler(mw *middleware.Middleware, resolver *graph.Resolver, coreUC core.UseCase) *Handler {
 	return &Handler{
 		mw:       mw,
 		resolver: resolver,
+		coreUC:   coreUC,
 	}
 }
 
@@ -36,32 +37,19 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	router.Use(otelgin.Middleware(config.ServiceName))
 	router.Use(h.mw.LoggingMiddleware())
 	router.Use(h.mw.ValidatePasetoToken())
+	router.Use(graph.DataLoader(h.coreUC))
 
 	router.POST("/query", h.graphqlHandler())
+	router.GET("/query", h.graphqlHandler())
 	router.GET("/", h.playgroundHandler())
-	router.GET("/ping", func(ctx *gin.Context) {
-		tracer := otel.Tracer(config.ServiceName)
-		_, span := tracer.Start(ctx.Request.Context(), "pong")
-		defer span.End()
-
-		logger, ok := ctx.Value("logger").(*zap.Logger)
-		if !ok {
-			fmt.Println("logger not found")
-		} else {
-			logger.Info("logger found!")
-		}
-
-		ctx.JSON(http.StatusOK, map[string]string{
-			"message": "pong",
-		})
-	})
 
 	return h.engine
 }
 
 func (h *Handler) graphqlHandler() gin.HandlerFunc {
 	graphqlHandler := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: h.resolver}))
-
+	// graphqlHandler.Use(extension.FixedComplexityLimit(5))
+	graphqlHandler.AddTransport(&transport.Websocket{})
 	return func(c *gin.Context) {
 		graphqlHandler.ServeHTTP(c.Writer, c.Request)
 	}

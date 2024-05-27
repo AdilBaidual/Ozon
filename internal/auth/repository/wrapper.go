@@ -3,6 +3,7 @@ package repository
 import (
 	"Service/internal/auth"
 	"context"
+
 	"go.opentelemetry.io/otel"
 )
 

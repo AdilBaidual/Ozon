@@ -1,7 +1,7 @@
 package containers
 
 import (
-	"api-cp/pkg/utils"
+	"Service/pkg/utils"
 	"context"
 	"path/filepath"
 	"time"
@@ -44,7 +44,7 @@ func CreatePostgresContainer(ctx context.Context) (*PostgresContainer, error) {
 		return nil, err
 	}
 
-	migrationsDir := filepath.Join(filepath.Dir(goModPath), "/internal/db")
+	migrationsDir := filepath.Join(filepath.Dir(goModPath), "/db")
 	gooseDB, err := goose.OpenDBWithDriver("pgx", connStr)
 	if err != nil {
 		return nil, err
