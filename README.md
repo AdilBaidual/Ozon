@@ -24,13 +24,15 @@
 
 IN_MEMORY_MODE = bool - env переменная отвечающая за способ хранения данных(Redis/PostgresQL)
 
+http://localhost:19090/ - GraphQL Playground
+
 ### Технологии:
  - UberFx для построения Dependency injection
  - Uber.Zap - логгер
  - Paseto токены для реализации авторизации с access и refresh токенами
  - Valkey для удобной реализации логики с токенами авторизации
  - Redis в качестве in-memory базы данных
- - Jaeger для трассировка запросов
+ - Jaeger для трассировка запросов(http://localhost:16686/)
  - Golangci-lint - линтер
  - Gin - http фреймворк
  - Goose - система миграции с автоматизацией через docker-compose
